@@ -10,6 +10,8 @@ void ctower::init(const sf::Texture& tex, float x, float y) {
     _sprite.setTexture(tex);
     _sprite.setOrigin(tex.getSize().x / 2.f, tex.getSize().y / 2.f);
     _sprite.setPosition(x, y);
+    _sprite.setScale(1.0f, 1.0f);// scale tower
+
     _location = cpoint::fromXYToRowCol(x, y);
 }
 

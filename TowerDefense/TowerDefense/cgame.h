@@ -6,27 +6,39 @@
 #include "cenemy.h"
 #include "cbullet.h"
 #include "ctower.h"
+#include <queue>
 
 using namespace sf;
 using namespace std;
 
+struct explosion {
+    Sprite sprite;
+    float timer = 0.f;
+};
+
+
 class cgame {
 private:
     RenderWindow window;
-    Texture backgroundTexture, towerTexture, enemyTexture, bulletTexture, mainTowerTexture;
+    Texture backgroundTexture[4], mainTowerTexture, explosionTexture, menuTexture;
+    Texture towerTexture[3];
+    Texture bulletTexture[3];
+    Texture enemyTexture[3];
+    Texture infoTexture[3];
     Sprite backgroundSprite, mainTowerSprite;
     Font font;
-    Text hpText, gameOverText;
-
+    Text hpText, gameOverText, gameWin;
     vector<cenemy> enemies;
     vector<ctower> towers;
     vector<cbullet> bullets;
-
+    vector<explosion> explosions;
     cmap map;
     bool isGameOver;
     int mainTowerHealth;
     float enemySpeed;
     float TOWER_RANGE;
+
+    int attacks;
 
 public:
     cgame();
@@ -34,7 +46,21 @@ public:
 
 private:
     void handleEvents();
-    void update(float dt);
-    void render();
-    void spawnEnemies();
+    void render(float dt);
+    void spawnEnemies(int number, int type);
+    void updateEnemies(float dt);
+    void updateTower(float dt);
+    void updateTest(float dt);
+    void updateMap(int index);
+
+    Sprite infoSprite[3];
+    bool showInfo = false;
+    int selectedinfo;
+
+    bool isChoosingTower = false;
+    cpoint selectedTile;  // cliked pixel
+    Sprite towerIcons[3];  // 4 icon tower
+
 };
+
+
