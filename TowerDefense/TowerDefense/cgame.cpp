@@ -4,21 +4,34 @@
 using namespace sf;
 using namespace std;
 
-cgame::cgame() : window(), isGameOver(false), mainTowerHealth(5), enemySpeed(100.f), TOWER_RANGE(200.f) {
+cgame::cgame() : window(), isGameOver(false), mainTowerHealth(5), enemySpeed(100.f), TOWER_RANGE(300.f) {
     // Load resources
-    if (!backgroundTexture.loadFromFile("background.png") ||
-        !towerTexture.loadFromFile("tower.png") ||
-        !enemyTexture.loadFromFile("blockbott4.png") ||
-        !bulletTexture.loadFromFile("bullet.png") ||
+    if (!backgroundTexture[0].loadFromFile("map1.png") ||
+        !backgroundTexture[1].loadFromFile("map2.png") ||
+        !backgroundTexture[2].loadFromFile("map3.png") ||
+        !backgroundTexture[3].loadFromFile("map4.png") ||
+        !towerTexture[0].loadFromFile("tower1.png") ||
+        !towerTexture[1].loadFromFile("tower2.png") ||
+        !towerTexture[2].loadFromFile("tower3.png") ||
+        !enemyTexture[0].loadFromFile("blockbott1.png") ||
+        !enemyTexture[1].loadFromFile("ballred1.png") ||
+        !enemyTexture[2].loadFromFile("botzred1.png") ||
+        !bulletTexture[0].loadFromFile("bullet1.png") ||
+        !bulletTexture[1].loadFromFile("bullet2.png") ||
+        !bulletTexture[2].loadFromFile("bullet3.png") ||
         !mainTowerTexture.loadFromFile("mainTower.png") ||
+        !explosionTexture.loadFromFile("explosion.png") ||
+        !infoTexture[0].loadFromFile("infotower1.png") ||
+        !infoTexture[1].loadFromFile("infotower2.png") ||
+        !infoTexture[2].loadFromFile("infotower3.png") ||
         !font.loadFromFile("arial.ttf"))
     {
         cerr << "Failed to load resources!\n";
         exit(EXIT_FAILURE);
     }
 
-    window.create(VideoMode(backgroundTexture.getSize().x, backgroundTexture.getSize().y), "Tower Defense");
-    backgroundSprite.setTexture(backgroundTexture);
+
+    backgroundSprite.setTexture(backgroundTexture[0]);
 
     // Setup map & path
     cenemy& ce = map.getEnemy();
@@ -28,7 +41,7 @@ cgame::cgame() : window(), isGameOver(false), mainTowerHealth(5), enemySpeed(100
     cpoint endTile = ce.getEnd();
     float endX = map.getMap()[endTile.getRow()][endTile.getCol()].getPixelX();
     float endY = map.getMap()[endTile.getRow()][endTile.getCol()].getPixelY();
-    endY -= 80.f; // Move up 1 tile
+    // Move up 1 tile
 
     mainTowerSprite.setTexture(mainTowerTexture);
     mainTowerSprite.setOrigin(mainTowerTexture.getSize().x / 2.f, mainTowerTexture.getSize().y / 2.f);
@@ -43,28 +56,60 @@ cgame::cgame() : window(), isGameOver(false), mainTowerHealth(5), enemySpeed(100
     // Set up text to notify game loss (demo)
     gameOverText.setFont(font);
     gameOverText.setCharacterSize(30);
-    gameOverText.setFillColor(Color::Black);
+    gameOverText.setFillColor(Color::Red);
     gameOverText.setString("Main tower destroyed! Game over!");
     FloatRect textRect = gameOverText.getLocalBounds();
     gameOverText.setOrigin(textRect.left + textRect.width / 2.f, textRect.top + textRect.height / 2.f);
-    gameOverText.setPosition(backgroundTexture.getSize().x / 2.f, backgroundTexture.getSize().y / 2.f);
+    gameOverText.setPosition(backgroundTexture[0].getSize().x / 2.f, backgroundTexture[0].getSize().y / 2.f);
 
-    spawnEnemies();
+    // Ser up text to notify game win
+    gameWin.setFont(font);
+    gameWin.setCharacterSize(30);
+    gameWin.setFillColor(Color::Blue);
+    gameWin.setString("You win!");
+    textRect = gameWin.getLocalBounds();
+    gameWin.setOrigin(textRect.left + textRect.width / 2.f, textRect.top + textRect.height / 2.f);
+    gameWin.setPosition(backgroundTexture[0].getSize().x / 2.f, backgroundTexture[0].getSize().y / 2.f);
+
+    // Set up for choosing towers
+    for (int i = 0; i < 3; ++i) {
+        towerIcons[i].setTexture(towerTexture[i]);
+        towerIcons[i].setScale(0.6f, 0.6f); // Tower icon size
+    }
+
+    // Set up for info tower
+    for (int i = 0; i < 3; ++i) {
+        infoSprite[i].setTexture(infoTexture[i]);
+    }
+
+    attacks = 0;
+
 }
+
+
 
 void cgame::run() {
     Clock clock;
+    updateMap(1); // Choose Map
     while (window.isOpen()) {
         float dt = clock.restart().asSeconds(); // Delta time for smooth movement
         handleEvents();
-        update(dt);
-        render();
+        updateEnemies(dt);
+        updateTower(dt);
+        updateTest(dt);
+        render(dt);
+
+        if (enemies.empty() && attacks < 3) {
+            spawnEnemies(5, attacks);
+            attacks++;
+        }
     }
 }
 
-void cgame::spawnEnemies() {
+
+void cgame::spawnEnemies(int number, int type) {
     cenemy& ce = map.getEnemy();
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < number; i++) {
         cenemy enemy;
         enemy.setStart(ce.getStart());
         enemy.setEnd(ce.getEnd());
@@ -75,39 +120,18 @@ void cgame::spawnEnemies() {
         float pixelX = startPoint.getPixelX() - i * 80.f;
         float pixelY = startPoint.getPixelY();
 
-        enemy.init(enemyTexture, pixelX, pixelY, 3); // Start with 3 health (level 1), adjust based on level setting
+        if (type == 0)  enemy.init(enemyTexture[0], pixelX, pixelY, 3); // Start with 3 health (level 1), adjust based on level setting
+        else if (type == 1)  enemy.init(enemyTexture[1], pixelX, pixelY, 6); // Start with 3 health (level 1), adjust based on level setting
+        else if (type == 2)  enemy.init(enemyTexture[2], pixelX, pixelY, 9); // Start with 3 health (level 1), adjust based on level setting
         enemy.setCurr(startPoint);  // Store current grid position
 
         enemies.push_back(enemy);
     }
+
 }
 
-void cgame::handleEvents() {
-    Event event;
-    while (window.pollEvent(event)) {
-        if (event.type == Event::Closed)
-            window.close();
-
-        // Place tower on valid map tiles by clicking the mouse
-        if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left) {
-            int mx = event.mouseButton.x, my = event.mouseButton.y;
-            cpoint clicked = cpoint::fromXYToRowCol(mx, my);
-
-            if (clicked.getRow() >= 0 && clicked.getRow() < cpoint::MAP_ROW &&
-                clicked.getCol() >= 0 && clicked.getCol() < cpoint::MAP_COL &&
-                map.getMap()[clicked.getRow()][clicked.getCol()].getC() == -1 && towers.size() < 3) { // Assuming towers is 3 for scaling, adjust based on level setting
-                ctower t;
-                t.init(towerTexture, map.getMap()[clicked.getRow()][clicked.getCol()].getPixelX(), map.getMap()[clicked.getRow()][clicked.getCol()].getPixelY());
-                t.setLocation(clicked);
-                t.setMapForBullet(map.getMap());
-                t.getBullet().setSpeed(8);
-                towers.push_back(t);
-            }
-        }
-    }
-}
-
-void cgame::update(float dt) {
+void cgame::updateEnemies(float dt)
+{
     // Enemy movement
     for (auto& e : enemies) {
         if (!e.hasReachedEnd() && e.getCurrentTarget() < e.getPathLength()) {
@@ -123,6 +147,16 @@ void cgame::update(float dt) {
                 if (e.getCurrentTarget() >= e.getPathLength()) {
                     e.reachEnd();
                     mainTowerHealth--;
+
+                    // Explosion effect
+                    Sprite exp;
+                    exp.setTexture(explosionTexture);
+                    exp.setOrigin(explosionTexture.getSize().x / 2.f, explosionTexture.getSize().y / 2.f);
+                    exp.setPosition(mainTowerSprite.getPosition());
+                    exp.setScale(0.6f, 0.6f);
+                    explosions.push_back({ exp, 0.f });
+
+
                     if (mainTowerHealth <= 0) {
                         isGameOver = true;
                     }
@@ -136,6 +170,20 @@ void cgame::update(float dt) {
         }
     }
 
+
+
+    enemies.erase(
+        std::remove_if(enemies.begin(), enemies.end(),
+            [](const cenemy& e) {
+                return e.isDead() || e.hasReachedEnd(); // Erase dead enemies
+            }),
+        enemies.end()
+    );
+
+}
+
+void cgame::updateTower(float dt)
+{
     // Tower attack logic: target enemies and shoot
     for (auto& tower : towers) {
         tower.addShootTimer(dt);
@@ -169,9 +217,14 @@ void cgame::update(float dt) {
         if (tower.getTargetEnemyIdx() != -1 && tower.getShootTimer() > 1.f) {
             tower.resetShootTimer();
             cbullet b;
-            b.init(bulletTexture, tower.getSprite().getPosition().x, tower.getSprite().getPosition().y);
+            b.init(bulletTexture[tower.getType()], tower.getSprite().getPosition().x, tower.getSprite().getPosition().y);
             b.setTargetIdx(tower.getTargetEnemyIdx());
-            b.setSpeed(8);
+            b.setSpeed(5);
+
+            // Set damgage
+            if (tower.getType() == 1) b.setDamage(2);
+            else if (tower.getType() == 2) b.setDamage(3);
+
             bullets.push_back(b);
         }
     }
@@ -188,13 +241,30 @@ void cgame::update(float dt) {
 
         if (b.checkCollision(enemies[idx])) {
             b.deactivate();
+            //Set damage
+
+
             enemies[idx].takeDamage(b.getDamage());
 
+
+            // Explosion effect
+            Sprite exp;
+            exp.setTexture(explosionTexture);
+            exp.setOrigin(explosionTexture.getSize().x / 2.f, explosionTexture.getSize().y / 2.f);
+
+            // Get enemy position to place explosion
+            float ex = enemies[idx].getX();
+            float ey = enemies[idx].getY();
+            exp.setPosition(ex, ey);
+            exp.setScale(0.15f, 0.15f);
+            explosions.push_back({ exp, 0.f });
+
             // When enemy dies, move it off-screen and mark as reached end
-            if (enemies[idx].isDead()) {
-                enemies[idx].setPosition(-100.f, -100.f);
-                enemies[idx].reachEnd();
-            }
+            //if (enemies[idx].isDead()) {
+            //    enemies[idx].setPosition(-100.f, -100.f);
+            //    enemies[idx].reachEnd();
+            //}
+            bullets.erase(remove_if(bullets.begin(), bullets.end(), [](cbullet& b) { return !b.isActive(); }), bullets.end());
         }
         else {
             b.trackEnemy(enemies[idx], dt);
@@ -202,19 +272,171 @@ void cgame::update(float dt) {
     }
 
     // Remove inactive bullets
-    bullets.erase(remove_if(bullets.begin(), bullets.end(), [](cbullet& b) { return !b.isActive(); }), bullets.end());
+}
 
+void cgame::updateTest(float dt)
+{
     hpText.setString("Main Tower HP: " + to_string(mainTowerHealth));
 }
 
-void cgame::render() {
+void cgame::updateMap(int index)
+{
+    window.create(VideoMode(backgroundTexture[index].getSize().x, backgroundTexture[0].getSize().y), "Tower Defense");
+    backgroundSprite.setTexture(backgroundTexture[index]);
+
+    // Setup map & path
+    map.ChooseMap(index);
+    cenemy& ce = map.getEnemy();
+    ce.findPath(map.getMap(), ce.getStart(), ce.getEnd());
+
+    // Set up main tower
+    cpoint endTile = ce.getEnd();
+    float endX = map.getMap()[endTile.getRow()][endTile.getCol()].getPixelX();
+    float endY = map.getMap()[endTile.getRow()][endTile.getCol()].getPixelY();
+    // Move up 1 tile
+
+    mainTowerSprite.setTexture(mainTowerTexture);
+    mainTowerSprite.setOrigin(mainTowerTexture.getSize().x / 2.f, mainTowerTexture.getSize().y / 2.f);
+    mainTowerSprite.setPosition(endX, endY);
+
+    // Set up text to display main tower hp (demo)
+    hpText.setFont(font);
+    hpText.setCharacterSize(20);
+    hpText.setFillColor(Color::Black);
+    hpText.setPosition(10.f, 10.f);
+
+    // Set up text to notify game loss (demo)
+    gameOverText.setFont(font);
+    gameOverText.setCharacterSize(30);
+    gameOverText.setFillColor(Color::Red);
+    gameOverText.setString("Main tower destroyed! Game over!");
+    FloatRect textRect = gameOverText.getLocalBounds();
+    gameOverText.setOrigin(textRect.left + textRect.width / 2.f, textRect.top + textRect.height / 2.f);
+    gameOverText.setPosition(backgroundTexture[index].getSize().x / 2.f, backgroundTexture[index].getSize().y / 2.f);
+
+    // Ser up text to notify game win
+    gameWin.setFont(font);
+    gameWin.setCharacterSize(30);
+    gameWin.setFillColor(Color::Blue);
+    gameWin.setString("You win!");
+    textRect = gameWin.getLocalBounds();
+    gameWin.setOrigin(textRect.left + textRect.width / 2.f, textRect.top + textRect.height / 2.f);
+    gameWin.setPosition(backgroundTexture[index].getSize().x / 2.f, backgroundTexture[index].getSize().y / 2.f);
+}
+
+
+
+void cgame::handleEvents() {
+    Event event;
+    while (window.pollEvent(event)) {
+        if (event.type == Event::Closed)
+            window.close();
+
+        if (event.type == Event::MouseButtonPressed && event.mouseButton.button == Mouse::Left) {
+            int mx = event.mouseButton.x, my = event.mouseButton.y;
+
+            if (isChoosingTower) {
+                // Click to choose tower
+                for (int i = 0; i < 3; ++i) {
+                    FloatRect bounds = towerIcons[i].getGlobalBounds();
+                    if (bounds.contains(mx, my)) {
+                        // Choose tower i
+                        if (towers.size() < 3) {
+                            ctower t;
+                            t.init(towerTexture[i],
+                                map.getMap()[selectedTile.getRow()][selectedTile.getCol()].getPixelX(),
+                                map.getMap()[selectedTile.getRow()][selectedTile.getCol()].getPixelY());
+
+                            t.setLocation(selectedTile);
+                            t.setMapForBullet(map.getMap());
+                            t.getBullet().setSpeed(8);
+                            t.setType(i);
+                            towers.push_back(t);
+                            // choosen
+                            map.getMap()[selectedTile.getRow()][selectedTile.getCol()].setC(i + 3);
+                        }
+                        isChoosingTower = false;
+                        return;
+                    }
+                }
+
+                // Click outside => close the menu
+                isChoosingTower = false;
+            }
+            else {
+                // First click
+                cpoint clicked = cpoint::fromXYToRowCol(mx, my);
+                if (clicked.getRow() >= 0 && clicked.getRow() < cpoint::MAP_ROW &&
+                    clicked.getCol() >= 0 && clicked.getCol() < cpoint::MAP_COL)
+                {
+                    int c = map.getMap()[clicked.getRow()][clicked.getCol()].getC();
+
+                    if (c == 2 && towers.size() < 3) {
+                        selectedTile = clicked;
+                        isChoosingTower = true;
+
+                        for (int i = 0; i < 3; ++i)
+                            towerIcons[i].setPosition(mx + i * 50.f, my);  // range 50 pixel
+                    }
+                    else if (c >= 3) {
+                        int TILE_SIZE = cpoint::TILE_SIZE;
+                        int x = clicked.getCol() * TILE_SIZE;
+                        int y = clicked.getRow() * TILE_SIZE;
+
+
+                        infoSprite[c - 3].setPosition(x + TILE_SIZE, y - TILE_SIZE * 4);  // Info board
+                        showInfo = true;
+                        selectedinfo = c;
+                    }
+                    else {
+                        showInfo = false;
+                    }
+                }
+            }
+
+        }
+    }
+}
+
+
+void cgame::render(float dt) {
     window.clear();
+
     window.draw(backgroundSprite);
     window.draw(mainTowerSprite);
     window.draw(hpText);
     if (isGameOver) window.draw(gameOverText);
+    if (enemies.empty()) window.draw(gameWin);
     for (const auto& t : towers) window.draw(t.getSprite());
     for (const auto& e : enemies) window.draw(e.getSprite());
     for (const auto& b : bullets) window.draw(b.getSprite());
+    for (auto& e : explosions)
+        window.draw(e.sprite);
+
+    if (isChoosingTower) {
+        for (int i = 0; i < 3; ++i)
+            window.draw(towerIcons[i]);
+    }
+
+    if (showInfo) {
+        window.draw(infoSprite[selectedinfo - 3]);
+    }
+
+    // Set time to erase explosions
+    for (auto& e : explosions)
+        e.timer += dt;
+    explosions.erase(
+        remove_if(explosions.begin(), explosions.end(), [](const explosion& e) {
+            return e.timer > 0.12f;
+            }),
+        explosions.end()
+    );
+
+
+
+
     window.display();
 }
+
+
+

@@ -10,7 +10,7 @@ private:
     cbullet _cb;
     float _shootTimer;
     int _targetEnemyIdx;
-
+    int _type = 1;
 public:
     ctower();
 
@@ -23,6 +23,10 @@ public:
     // Add
     void init(const sf::Texture& tex, float x, float y);
     const sf::Sprite& getSprite() const;
+
+
+    int& getType() { return _type; };
+    void setType(int t) { if (t >= 0 && t < 3) _type = t; else _type = 0; }
 
     void setLocation(const cpoint& loc);
     cpoint getLocation() const;

@@ -10,11 +10,15 @@ class cmap
 public:
     cmap();
 
-    void resetMapData();
+    /*   void resetMapData();*/
     void makeMapData();
-    void drawMap();
-
+    void makeMap2Data();
+    void makeMap3Data();
+    void makeMap4Data();
+    void ChooseMap(int index);
     cenemy& getEnemy() { return _ce; }
     ctower& getTower() { return _ctw; }
     cpoint(&getMap())[cpoint::MAP_ROW][cpoint::MAP_COL]{ return _m; }
+
+
 };
